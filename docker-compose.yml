@@ -1,67 +1,83 @@
 version: '3'
 
 networks:
-  laravel:
+  sheduledLaraDocker:
 
 services:
   site:
     build:
       context: .
       dockerfile: nginx.dockerfile
-    container_name: nginx
+    container_name: sheduled_lara_docker_nginx
     ports:
-      - "80:80"
+      - "8082:80"
+      - "443:443"
     volumes:
       - ./src:/var/www/html
     depends_on:
       - php
-      - mysql
+      - db
+      - redis
     networks:
-      - laravel
+      - sheduledLaraDocker
 
-  mysql:
-    image: mysql:5.7.29
-    container_name: mysql
-    restart: unless-stopped
+  db:
+    image: percona
+    container_name: sheduled_lara_docker_db
+    restart: on-failure
     tty: true
     ports:
-      - "3306:3306"
+      - "3314:3306"
+    volumes:
+      - ./percona:/var/lib/percona
     environment:
-      MYSQL_DATABASE: homestead
-      MYSQL_USER: homestead
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: sheduled_lara_docker_db
+      MYSQL_USER: laravel
+      MYSQL_PASSWORD: qwe123
+      MYSQL_ROOT_PASSWORD: root
       SERVICE_TAGS: dev
-      SERVICE_NAME: mysql
+      SERVICE_NAME: db
     networks:
-      - laravel
+      - sheduledLaraDocker
 
   php:
     build:
       context: .
       dockerfile: php.dockerfile
-    container_name: php
+    container_name: sheduled_lara_docker_php
     volumes:
       - ./src:/var/www/html
     ports:
       - "9000:9000"
     networks:
-      - laravel
+      - sheduledLaraDocker
 
   composer:
-    image: composer:latest
-    container_name: composer
+    image: frojd/composer-php-7.4
+    container_name: sheduled_lara_docker_composer
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
     depends_on:
       - php
     networks:
-      - laravel
+      - sheduledLaraDocker
+
+  redis:
+    image: redis:alpine
+    container_name: sheduled_lara_docker_redis
+    volumes:
+      - ./redis:/data
+    restart: on-failure
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
+    ports:
+      - 6380:6379
+    networks:
+      - sheduledLaraDocker
 
   npm:
-    image: node:13.7.0-slim
-    container_name: npm
+    image: node:14.18.0
+    container_name: sheduled_lara_docker_npm
     volumes:
       - ./src:/var/www/html
     working_dir: /var/www/html
@@ -71,22 +87,22 @@ services:
     build:
       context: .
       dockerfile: php.dockerfile
-    container_name: artisan
+    container_name: sheduled_lara_docker_artisan
     volumes:
       - ./src:/var/www/html
     depends_on:
-      - mysql
+      - db
     working_dir: /var/www/html
     entrypoint: ['php', '/var/www/html/artisan']
     networks:
-      - laravel
+      - sheduledLaraDocker
 
   cron:
     build:
       context: .
       dockerfile: cron.dockerfile
-    container_name: cron
+    container_name: sheduled_lara_docker_cron
     volumes:
       - ./src:/var/www/html
     networks:
-      - laravel
+      - sheduledLaraDocker
